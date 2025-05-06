@@ -59,23 +59,41 @@ library(tidyverse)
 ```{r}
 #| label: exercise-1
 remove_outliers <- function(df, ..., sd_thresh = 3) {
+  vars <- enquos(..., .named = TRUE)
+  var_names <- names(vars)
+  df |> 
+    select(var_names) |> 
+    mutate(across(var_names, list(mean = mean, sd = sd))) |> 
+    # thank you to https://stackoverflow.com/a/67031255
+    summarize(across(var_names, ~(.x - mean(.x)) / sd(.x))) |> 
+    
+    summarize(across(var_names, ~(.x > -sd_thresh & .x < sd_thresh)))
+  
+  # boolean mask original df
+  
+  
   # for each variable in ...
   # calculate mutate(paste0(..., z-val) = (... - mean(...) / sd(...) )
   
   # how do i get R to calculate z-value for each column, put it in separate column????
   
+  
   # df |> 
-  #   summarize(across({{...}}), mean)
-  df |> 
-    summarize(mean = mean(...))
+  #   select(!!!vars) |> 
+  #   mutate(!!!vars = !!!vars / 2)
+  #   
+  
+  # df |> 
+  #   summarize(across({{vars}}), mean)
+  # df |> 
+  #   summarize(across({{vars}}, mean))
 }
 
 remove_outliers(diamonds, 
-                price,
-                x)
+                price)
 
-diamonds |> 
-  mutate(x = (x - mean(x)) / sd(x))
+# diamonds |> 
+#   mutate(x = (x - mean(x)) / sd(x))
 
 ```
 
