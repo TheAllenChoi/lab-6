@@ -61,41 +61,32 @@ library(tidyverse)
 remove_outliers <- function(df, ..., sd_thresh = 3) {
   vars <- enquos(..., .named = TRUE)
   var_names <- names(vars)
-  df |> 
+  
+  ## check that all vars are numeric
+    ### thank you Dr. Theobold for the code example
+  numeric_total <- df %>%
+    select(all_of(var_names)) %>%
+    map_lgl(~ (is.numeric(.x))) %>%
+    keep(identity) %>%
+    names()
+
+  if (length(numeric_total) != length(var_names)) {
+    stop("All of the inputted variables must be numeric")
+  }
+  
+  bool <- df |> 
     select(var_names) |> 
     mutate(across(var_names, list(mean = mean, sd = sd))) |> 
-    # thank you to https://stackoverflow.com/a/67031255
-    summarize(across(var_names, ~(.x - mean(.x)) / sd(.x))) |> 
     
-    summarize(across(var_names, ~(.x > -sd_thresh & .x < sd_thresh)))
-  
-  # boolean mask original df
-  
-  
-  # for each variable in ...
-  # calculate mutate(paste0(..., z-val) = (... - mean(...) / sd(...) )
-  
-  # how do i get R to calculate z-value for each column, put it in separate column????
-  
-  
-  # df |> 
-  #   select(!!!vars) |> 
-  #   mutate(!!!vars = !!!vars / 2)
-  #   
-  
-  # df |> 
-  #   summarize(across({{vars}}), mean)
-  # df |> 
-  #   summarize(across({{vars}}, mean))
+    # thank you to https://stackoverflow.com/a/67031255
+    reframe(across(var_names, ~(.x - mean(.x)) / sd(.x))) |> 
+    
+    reframe(across(var_names, ~(.x > -sd_thresh & .x < sd_thresh))) |> 
+    rowSums()
+  return(df[(bool == length(var_names)), ])
 }
-
-remove_outliers(diamonds, 
-                price)
-
-# diamonds |> 
-#   mutate(x = (x - mean(x)) / sd(x))
-
 ```
+
 
 ## Testing Your Function!
 
@@ -128,7 +119,20 @@ remove_outliers(diamonds,
 
 ```{r}
 #| label: exercise-2
+impute_missing <- function(df, ..., impute_fun = mean) {
+  fun <- enquos(impute_fun, .named = TRUE)
+  
+  if (names(fun) == "mean") {
+    
+    
+  } else if (names(fun) == "median") {
+    print("b")
+  } else {
+    stop("Impute Function must be 'mean' or 'median'")
+  }
+}
 
+impute_missing(diamonds, impute_fun = fsdf)
 
 ```
 
