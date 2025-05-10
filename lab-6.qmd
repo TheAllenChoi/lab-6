@@ -121,19 +121,34 @@ remove_outliers(diamonds,
 #| label: exercise-2
 impute_missing <- function(df, ..., impute_fun = mean) {
   fun <- enquos(impute_fun, .named = TRUE)
+  vars <- enquos(..., .named = TRUE)
+  var_names <- names(vars)
+  
+  ## check that all vars are numeric
+    ### thank you Dr. Theobold for the code example
+  numeric_total <- df %>%
+    select(all_of(var_names)) %>%
+    map_lgl(~ (is.numeric(.x))) %>%
+    keep(identity) %>%
+    names()
+
+  if (length(numeric_total) != length(var_names)) {
+    stop("All of the inputted variables must be numeric")
+  }
   
   if (names(fun) == "mean") {
-    
+    df <- df |>
+      mutate(across(var_names, ~(replace_na(.x, mean(.x)))))
     
   } else if (names(fun) == "median") {
-    print("b")
+    df <- df |>
+      mutate(across(var_names, ~(replace_na(.x, median(.x)))))
+    
   } else {
     stop("Impute Function must be 'mean' or 'median'")
   }
+  return(df)
 }
-
-impute_missing(diamonds, impute_fun = fsdf)
-
 ```
 
 ## Testing Your Function!
@@ -170,8 +185,30 @@ If either option is `TRUE`, your function should call your `remove_outliers()` o
 
 ```{r}
 #| label: exercise-3
+fit_model <- function(df, mod_formula, remove_outliers = FALSE,
+                      impute_missing = FALSE, ...) {
+  x_var <- enquos(...)[2]
 
+  if (remove_outliers) {
+    df <- remove_outliers(df, !!!x_var)
+  }
+  if (impute_missing) {
+    df <- impute_missing(df, !!!x_var)
+  } 
+  
+  formula <- enquos(mod_formula, .named = TRUE)
 
+  return(lm(names(formula), df))
+}
+
+fit_model(
+  diamonds,
+  mod_formula = price ~ carat + cut,
+  remove_outliers = TRUE,
+  impute_missing = TRUE,
+  price, 
+  carat
+)
 ```
 
 ## Testing Your Function!
@@ -225,7 +262,15 @@ df_arg_combos
 
 ```{r}
 #| label: exercise-4
-
+df_arg_combos <- crossing(
+    impute_missing = c(TRUE, FALSE),
+    remove_outliers = c(TRUE, FALSE), 
+    mod_formula = c(price ~ carat, 
+            price ~ carat + cut,
+            price ~ carat + cut + clarity,
+            price ~ carat + cut + clarity + color)
+)
+df_arg_combos
 ```
 
 ## Iterating Over the Parameters
@@ -236,6 +281,5 @@ We've arrived at the final step!
 
 ```{r}
 #| label: exercise-5
-
-
+pmap(df_arg_combos, fit_model, df = diamonds, price, carat)
 ```
